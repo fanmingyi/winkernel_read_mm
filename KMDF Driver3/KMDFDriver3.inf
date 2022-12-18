@@ -1,0 +1,86 @@
+;
+; KMDFDriver3.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=Sample ; TODO: edit Class
+ClassGuid={78A1C341-4539-11d3-B88D-00C04FAD5171} ; TODO: edit ClassGuid
+Provider=%ManufacturerName%
+CatalogFile=KMDFDriver3.cat
+DriverVer= ; TODO: set DriverVer in stampinf property pages
+
+[DestinationDirs]
+DefaultDestDir = 12
+KMDFDriver3_Device_CoInstaller_CopyFiles = 11
+
+; ================= Class section =====================
+
+[ClassInstall32]
+Addreg=SampleClassReg
+
+[SampleClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+KMDFDriver3.sys  = 1,,
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%KMDFDriver3.DeviceDesc%=KMDFDriver3_Device, Root\KMDFDriver3 ; TODO: edit hw-id
+
+[KMDFDriver3_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+KMDFDriver3.sys
+
+;-------------- Service installation
+[KMDFDriver3_Device.NT.Services]
+AddService = KMDFDriver3,%SPSVCINST_ASSOCSERVICE%, KMDFDriver3_Service_Inst
+
+; -------------- KMDFDriver3 driver install sections
+[KMDFDriver3_Service_Inst]
+DisplayName    = %KMDFDriver3.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\KMDFDriver3.sys
+
+;
+;--- KMDFDriver3_Device Coinstaller installation ------
+;
+
+[KMDFDriver3_Device.NT.CoInstallers]
+AddReg=KMDFDriver3_Device_CoInstaller_AddReg
+CopyFiles=KMDFDriver3_Device_CoInstaller_CopyFiles
+
+[KMDFDriver3_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[KMDFDriver3_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[KMDFDriver3_Device.NT.Wdf]
+KmdfService =  KMDFDriver3, KMDFDriver3_wdfsect
+[KMDFDriver3_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+ClassName="Samples" ; TODO: edit ClassName
+DiskName = "KMDFDriver3 Installation Disk"
+KMDFDriver3.DeviceDesc = "KMDFDriver3 Device"
+KMDFDriver3.SVCDESC = "KMDFDriver3 Service"
