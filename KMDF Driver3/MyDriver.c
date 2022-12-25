@@ -1,5 +1,6 @@
+#include<ntifs.h>
 #include <Ntddk.h>
-
+#include<intrin.h>
 
 #define MY_CTL(NUM) CTL_CODE(FILE_DEVICE_UNKNOWN,0x800+NUM, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
@@ -180,17 +181,17 @@ DriverEntry(
 	PsGetVersion(NULL, NULL, &g_BuilderNumber, NULL);
 
 	DbgPrint("[My learning] g_BuilderNumber %ld \r\n", g_BuilderNumber);
-	/*UCHAR Buffer[260] = {0};
+	UCHAR Buffer[260] = {0};
 
-	MyReadProcessMemory((HANDLE)2100,(PVOID)0x00EE2274, Buffer,16);
+	MyReadProcessMemory((HANDLE)1064,(PVOID)0x00EE2274, Buffer,16);
 	DbgPrint("[My learning] Buffer %02x   %02x  %02x %02x \r\n", Buffer[0], Buffer[1], Buffer[2], Buffer[3]);
-*/
-	UCHAR Buffer[260] = { 0 };
-	Buffer[0] = 0xFF;
-	Buffer[1] = 0xFF;
-	Buffer[2] = 0xFF;
-	Buffer[3] = 0xFF;
-	MyWriteProcessMemory((HANDLE)2100, (PVOID)0x00EE2274, Buffer, 4);
+
+	UCHAR Buffer2[260] = { 0 };
+	Buffer2[0] = 0xFF;
+	Buffer2[1] = 0xFF;
+	Buffer2[2] = 0xFF;
+	Buffer2[3] = 0xFF;
+	MyWriteProcessMemory((HANDLE)1064, (PVOID)0x00EE2274, Buffer2, 4);
 	//打印信息
 	DbgPrint("[My learning]  drive loaded");
 	//触发一个断点
@@ -325,6 +326,210 @@ PVOID GetDirectoryTableBase(HANDLE  hProcess) {
 }
 
 PVOID pOldDirectoryTableBase;
+//
+//NTSTATUS MyReadProcessMemory(
+//	HANDLE  hProcess,
+//	PVOID lpBaseAddress,
+//	PVOID  lpBuffer,
+//	SIZE_T  nSize) {
+//
+//
+//	__try {
+//		PVOID pDirectoryTableBase = GetDirectoryTableBase((HANDLE)hProcess);
+//		if (pDirectoryTableBase == NULL)
+//		{
+//			return STATUS_UNSUCCESSFUL;
+//		}
+//		__asm {
+//			//防止当前进程被切换出去
+//			cli
+//			//保存环境
+//			pushad
+//			pushf
+//
+//			//保存旧的CR3
+//			mov eax, cr3
+//			mov pOldDirectoryTableBase, eax
+//
+//			//修改CR3
+//			mov eax, pDirectoryTableBase
+//			mov cr3, eax
+//		}
+//		if (MmIsAddressValid(lpBaseAddress))
+//		{
+//			ProbeForRead(lpBaseAddress, nSize, 4);
+//			RtlCopyMemory(lpBuffer, lpBaseAddress, nSize);
+//
+//			DbgPrint("[My learning] MmIsAddressValid is Ok\r\n", __FUNCTION__);
+//
+//		}
+//
+//
+//		__asm {
+//
+//			//恢复环境
+//			mov eax, pOldDirectoryTableBase
+//			mov pOldDirectoryTableBase, eax
+//			popf
+//			popad
+//			//恢复
+//			sti
+//		}
+//
+//		DbgPrint("[My learning] STATUS_SUCCESS\r\n", __FUNCTION__);
+//
+//		return STATUS_SUCCESS;
+//	}
+//	__except (1) {
+//		DbgPrint("[My learning] %s __exception\r\n", __FUNCTION__);
+//		__asm {
+//			//恢复环境
+//			mov eax, pOldDirectoryTableBase
+//			mov pOldDirectoryTableBase, eax
+//			popf
+//			popad
+//			//恢复
+//			sti
+//		}
+//	}
+//
+//	DbgPrint("[My learning] STATUS_UNSUCCESSFUL\r\n", __FUNCTION__);
+//
+//	return STATUS_UNSUCCESSFUL;
+//}
+
+
+//NTSTATUS MyWriteProcessMemory(
+//	HANDLE  hProcess,
+//	PVOID lpBaseAddress,
+//	PVOID  lpBuffer,
+//	SIZE_T  nSize) {
+//
+//	UNREFERENCED_PARAMETER(hProcess);
+//	UNREFERENCED_PARAMETER(lpBaseAddress);
+//	UNREFERENCED_PARAMETER(lpBuffer);
+//	UNREFERENCED_PARAMETER(nSize);
+//
+//
+//	NTSTATUS Status = STATUS_SUCCESS;
+//
+//	PVOID pDirectoryTableBase = GetDirectoryTableBase((HANDLE)hProcess);
+//	
+//	if (pDirectoryTableBase == NULL)
+//	{
+//		DbgPrint("[My learning] pDirectoryTableBase ==null %s\r\n", __FUNCTION__);
+//		return STATUS_UNSUCCESSFUL;
+//	}
+//	KdBreakPoint();
+//	__asm {
+//		//防止当前进程被切换出去
+//		cli
+//
+//		//保存环境
+//		//pushad
+//		//pushf
+//		//保存旧的CR3
+//		mov eax, cr3
+//		mov pOldDirectoryTableBase, eax
+//
+//		//修改CR3
+//		mov eax, pDirectoryTableBase
+//		mov cr3, eax
+//
+//		//关闭写保护
+//		mov eax,cr0
+//		and eax,not 10000h
+//		mov cr0,eax
+//
+//		
+//
+//		
+//	}
+//
+//	if (MmIsAddressValid(lpBaseAddress))
+//	{
+//		RtlCopyMemory(lpBaseAddress, lpBuffer, nSize);
+//		DbgPrint("[My learning] MmIsAddressValid is %s \r\n", __FUNCTION__);
+//	}
+//	else {
+//		DbgPrint("[My learning] MmIsAddressinValid is %s \r\n", __FUNCTION__);
+//	}
+//
+//	__asm {
+//		//恢复环境
+//		mov eax, pOldDirectoryTableBase
+//		mov cr3, eax
+//		//popfd
+//		//popad
+//	
+//
+//		//关闭写保护
+//		mov eax, cr0
+//		or eax,  10000h
+//		mov cr0, eax
+//
+//		//恢复
+//		sti
+//	}
+//
+//
+//	return Status;
+//}
+////
+void DisableWP() {
+	ULONG_PTR cr0=__readcr0();
+	cr0 &= ~0x10000;
+	__writecr0(cr0);
+}
+
+void EnableWP() {
+	ULONG_PTR cr0 = __readcr0();
+	cr0 |= 0x10000;
+	__writecr0(cr0);
+}
+NTSTATUS MyWriteProcessMemory(
+	HANDLE  hProcess,
+	PVOID lpBaseAddress,
+	PVOID  lpBuffer,
+	SIZE_T  nSize) {
+
+	PEPROCESS Process = NULL;
+	KdBreakPoint();
+	NTSTATUS Status = PsLookupProcessByProcessId(hProcess, &Process);
+
+	if (!NT_SUCCESS(Status))
+	{
+		return Status;
+	}
+
+	//切换进程
+	KAPC_STATE  ApcSate;
+	KeStackAttachProcess(Process, &ApcSate);
+
+
+	//内存拷贝
+	DisableWP();
+
+	__try {
+		RtlCopyMemory(lpBaseAddress, lpBuffer, nSize);
+	}
+	__except (1) {
+
+	}
+	
+	EnableWP();
+	//恢复进程
+	KeUnstackDetachProcess(&ApcSate);
+
+	//释放引用
+	if (Process)
+	{
+		ObDereferenceObject(Process);
+	}
+
+	return Status;
+}
+
 
 NTSTATUS MyReadProcessMemory(
 	HANDLE  hProcess,
@@ -333,145 +538,35 @@ NTSTATUS MyReadProcessMemory(
 	SIZE_T  nSize) {
 
 
-	__try {
-		PVOID pDirectoryTableBase = GetDirectoryTableBase((HANDLE)hProcess);
-		if (pDirectoryTableBase == NULL)
-		{
-			return STATUS_UNSUCCESSFUL;
-		}
-		__asm {
-			//防止当前进程被切换出去
-			cli
-			//保存环境
-			pushad
-			pushf
+	PEPROCESS Process = NULL;
+	NTSTATUS Status = PsLookupProcessByProcessId(hProcess, &Process);
 
-			//保存旧的CR3
-			mov eax, cr3
-			mov pOldDirectoryTableBase, eax
-
-			//修改CR3
-			mov eax, pDirectoryTableBase
-			mov cr3, eax
-		}
-		if (MmIsAddressValid(lpBaseAddress))
-		{
-			ProbeForRead(lpBaseAddress, nSize, 4);
-			RtlCopyMemory(lpBuffer, lpBaseAddress, nSize);
-
-			DbgPrint("[My learning] MmIsAddressValid is Ok\r\n", __FUNCTION__);
-
-		}
-
-
-		__asm {
-
-			//恢复环境
-			mov eax, pOldDirectoryTableBase
-			mov pOldDirectoryTableBase, eax
-			popf
-			popad
-			//恢复
-			sti
-		}
-
-		DbgPrint("[My learning] STATUS_SUCCESS\r\n", __FUNCTION__);
-
-		return STATUS_SUCCESS;
-	}
-	__except (1) {
-		DbgPrint("[My learning] %s __exception\r\n", __FUNCTION__);
-		__asm {
-			//恢复环境
-			mov eax, pOldDirectoryTableBase
-			mov pOldDirectoryTableBase, eax
-			popf
-			popad
-			//恢复
-			sti
-		}
-	}
-
-	DbgPrint("[My learning] STATUS_UNSUCCESSFUL\r\n", __FUNCTION__);
-
-	return STATUS_UNSUCCESSFUL;
-}
-//
-
-NTSTATUS MyWriteProcessMemory(
-	HANDLE  hProcess,
-	PVOID lpBaseAddress,
-	PVOID  lpBuffer,
-	SIZE_T  nSize) {
-
-	UNREFERENCED_PARAMETER(hProcess);
-	UNREFERENCED_PARAMETER(lpBaseAddress);
-	UNREFERENCED_PARAMETER(lpBuffer);
-	UNREFERENCED_PARAMETER(nSize);
-
-
-	NTSTATUS Status = STATUS_SUCCESS;
-
-	PVOID pDirectoryTableBase = GetDirectoryTableBase((HANDLE)hProcess);
-	
-	if (pDirectoryTableBase == NULL)
+	if (!NT_SUCCESS(Status))
 	{
-		DbgPrint("[My learning] pDirectoryTableBase ==null %s\r\n", __FUNCTION__);
-		return STATUS_UNSUCCESSFUL;
-	}
-	KdBreakPoint();
-	__asm {
-		//防止当前进程被切换出去
-		cli
-
-		//保存环境
-		//pushad
-		//pushf
-		//保存旧的CR3
-		mov eax, cr3
-		mov pOldDirectoryTableBase, eax
-
-		//修改CR3
-		mov eax, pDirectoryTableBase
-		mov cr3, eax
-
-		//关闭写保护
-		mov eax,cr0
-		and eax,not 10000h
-		mov cr0,eax
-
-		
-
-		
+		return Status;
 	}
 
-	if (MmIsAddressValid(lpBaseAddress))
+	//切换进程
+	KAPC_STATE  ApcSate;
+	KeStackAttachProcess(Process, &ApcSate);
+
+	PHYSICAL_ADDRESS pa = { 0 };
+	pa = MmGetPhysicalAddress(lpBaseAddress);
+	PVOID lpBaseMap = MmMapIoSpace(pa, nSize, MmNonCached);
+	if (lpBaseMap != NULL)
 	{
-		RtlCopyMemory(lpBaseAddress, lpBuffer, nSize);
-		DbgPrint("[My learning] MmIsAddressValid is %s \r\n", __FUNCTION__);
+		//内存拷贝
+		RtlCopyMemory(lpBuffer, lpBaseMap, nSize);
+		MmUnmapIoSpace(lpBaseMap, nSize);
 	}
-	else {
-		DbgPrint("[My learning] MmIsAddressinValid is %s \r\n", __FUNCTION__);
+	//恢复进程
+	KeUnstackDetachProcess(&ApcSate);
+
+	//释放引用
+	if (Process)
+	{
+		ObDereferenceObject(Process);
 	}
-
-	__asm {
-		//恢复环境
-		mov eax, pOldDirectoryTableBase
-		mov cr3, eax
-		//popfd
-		//popad
-	
-
-		//关闭写保护
-		mov eax, cr0
-		or eax,  10000h
-		mov cr0, eax
-
-		//恢复
-		sti
-	}
-
 
 	return Status;
 }
-//
